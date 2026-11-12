@@ -153,11 +153,43 @@ Dari 400 set kartu acak, sekitar **79%** bisa jadi 24. Dalam 13 ronde, biasanya 
 
 - Di awal ronde, tiap bot membuat rencana: kapan menyala, dan apakah nanti dimatikan lagi.
 - Waktu bot ikut diskala dengan pilihan waktu mengamati.
-- Saat 2 pemain sudah menyala, bot yang belum nemu bisa ikut bluff supaya tidak jadi penuding.
-- Saat menuding, bot lebih curiga pada pemain yang menyala paling cepat.
+- Saat tinggal tepat 2 pemain aktif yang OFF, bot yang belum nemu bisa ikut bluff supaya tidak jadi penuding (sekali per ronde).
+- Saat menuding, bot lebih curiga pada pemain yang menyala paling cepat, dan sedikit lebih curiga pada manusia (`HUMAN_SUSPICION_BONUS = 0.3`).
 - Saat dituding, bot hanya berhasil kalau memang sudah nemu solusi.
 
 Angka ini diatur di `PERSONAS` dalam `js/bot.js`.
+
+---
+
+## Mesin untuk online (Langkah 1)
+
+`game.js` sudah siap dipakai server. Layar online dan server belum ada. Lihat `ONLINE_PLAN.md`.
+
+```js
+game.newGame({
+  seats: [{ human: true, name: 'Ana' }, { human: false, name: 'Bot A', persona: 'honest' }], // 2..4 kursi
+  decks: 2,                // 1..3, total ronde = 13 x dek
+  leaveMode: 'bot'         // 'bot' = diganti bot, 'continue' = lanjut tanpa dia
+});
+```
+
+`newGame()` tanpa argumen tetap membuat game solo: 3 bot + manusia di kursi 3, 1 dek, 13 ronde.
+
+| Fungsi | Guna |
+|---|---|
+| `setOn(pid, val)` | Saklar. Ditolak untuk pemain yang keluar. |
+| `accuse(pid, tid)` | Hanya penuding yang boleh. |
+| `submit(pid, tokens)` | Hanya tertuding manusia yang boleh. |
+| `setConnected(pid, val)` | Tandai putus / tersambung. |
+| `leave(pid)` | Pemain pergi. Diganti di batas ronde, bukan di tengah ronde. |
+| `snapshotFor(pid)` | Data aman untuk dikirim ke pemain. |
+| `standings()` | Skor akhir. Pemain keluar selalu kalah, di urutan bawah. |
+
+`accuse(tid)` dan `submit(tokens)` dengan satu argumen masih bisa, untuk mode solo. Server online wajib memakai dua argumen.
+
+`snapshotFor` hanya mengirim field di daftar putih. Dek, rencana bot, dan solusi ronde berjalan tidak pernah ikut. Solusi baru muncul di hasil ronde. Sifat bot baru muncul di skor akhir.
+
+`parser.js` menolak token rusak tanpa crash: bukan array, lebih dari 24 token, bentuk token aneh, atau kurung lebih dari 8 lapis.
 
 ---
 
@@ -170,10 +202,14 @@ node tests/run-tests.js
 Yang dicek:
 
 - Dek berisi 52 kartu unik, dan nilai kartu benar.
-- Parser: urutan hitung, kurung, pecahan, bagi nol, rumus rusak.
+- Parser: urutan hitung, kurung, pecahan, bagi nol, rumus rusak, token sembarangan dari jaringan.
 - Solver: semua rumus hasilnya benar-benar 24, dan kasus mustahil dikenali.
-- 30 simulasi game penuh: selalu 13 ronde, dan total kartu tetap 52.
+- 30 simulasi game solo penuh: selalu 13 ronde, dan total kartu tetap 52.
 - Aturan tudingan dan pembagian kartu saat waktu habis.
+- Meja 2, 3, dan 4 pemain: tepat 1 OFF, semua ON, tidak ada ON, waktu habis.
+- Bot pengganti di batas ronde, dan "lanjut tanpa dia".
+- 1, 2, 3 dek: jumlah ronde dan kartu pas, tidak ada kartu dobel dalam satu dek.
+- `snapshotFor`: hanya field daftar putih di tiap fase.
 
 ---
 
@@ -199,7 +235,10 @@ Disimpan di `localStorage` browser.
   - Tombol di atas jadi dua baris.
   - Pilihan waktu di menu tidak rapi.
 - [ ] Pilihan baru: hitung mundur baru mulai saat ada pemain yang menyala.
-- [ ] Multiplayer online.
+- [ ] Multiplayer online (lihat `ONLINE_PLAN.md`):
+  - [x] Langkah 1: mesin game untuk 2–4 kursi, banyak dek, pemain keluar, snapshot.
+  - [ ] Langkah 2: server minimal.
+  - [ ] Langkah 3: layar online, lobby, room, reconnect, emote.
 
 ---
 

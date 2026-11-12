@@ -139,3 +139,50 @@ Kartu tetap harus diketuk atau diklik.
 - Lampu bot yang cepat menyala belum tentu jujur.
 - Kalau kartunya terlihat sulit, menyala lebih awal bisa membuatmu aman dari tugas menuding.
 - Tapi kalau kamu dituding dan tidak bisa membuktikan, kamu yang kena 4 kartu.
+
+---
+
+## Aturan versi online (sedang dibuat)
+
+Mesin game sudah mendukung aturan ini. Layar online belum ada. Mode solo di atas tetap sama.
+
+### Meja
+- 2 sampai 4 kursi. Tiap kursi berisi manusia atau bot.
+- Bot tidak wajib. Main berdua tanpa bot boleh.
+
+### Lama game
+| Dek | Ronde |
+|---|---|
+| 1 | 13 |
+| 2 | 26 |
+| 3 | 39 |
+
+Dek dikocok ulang tiap 13 ronde. Penalti terus menumpuk.
+
+### Kapan ronde terkunci
+Ronde terkunci begitu **paling banyak 1 pemain aktif yang masih OFF**.
+
+| Pemain | Terkunci saat |
+|---|---|
+| 2 | 1 ON, 1 OFF |
+| 3 | 2 ON, 1 OFF |
+| 4 | 3 ON, 1 OFF |
+
+Yang OFF menuding. Kalau semua ON, yang paling akhir menyala menuding.
+
+### Waktu habis
+Sama seperti di atas: tiap pemain OFF dapat `floor(4 / jumlah OFF)` kartu, sisanya dibuang.
+Dengan 3 pemain: 1 ON, 2 OFF → tiap OFF dapat 2.
+
+### Pemain keluar
+- Pemain yang keluar di tengah ronde tetap di kursinya sampai ronde selesai.
+  Kalau dia dituding lalu tidak menjawab, waktu habis dan dia ambil 4 kartu.
+- Di batas ronde, host sudah memilih salah satu:
+
+| Pilihan host | Yang terjadi |
+|---|---|
+| Ganti bot | Bot duduk di kursinya. Penaltinya tetap. |
+| Lanjut tanpa dia | Kursi ditandai keluar. Penaltinya tetap, dan dia dihitung kalah. |
+
+- Kalau tinggal 1 pemain aktif, game selesai.
+- Di online, ronde lanjut sendiri setelah 8 detik. Tidak ada tombol "Lanjut".
