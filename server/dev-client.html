@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mathfia dev client</title>
+<style>
+  body { font: 15px system-ui, sans-serif; margin: 16px; max-width: 760px; }
+  button { font: inherit; margin: 2px; padding: 6px 10px; }
+  .box { border: 1px solid #999; padding: 8px; margin: 8px 0; }
+  pre { background: #f3f3f3; padding: 8px; max-height: 260px; overflow: auto; font-size: 12px; }
+  .on { font-weight: bold; color: #b8860b; }
+</style>
+</head>
+<body>
+<h1>Mathfia: dev client (Langkah 2)</h1>
+<p>Halaman uji polos. Buka di 2 tab, isi nama, tekan Join.</p>
+
+<div class="box">
+  <input id="nick" placeholder="Nama" maxlength="16">
+  <button id="join">Join</button>
+  <span id="me"></span>
+</div>
+
+<div class="box">
+  <div id="info"></div>
+  <div id="players"></div>
+  <div id="cards"></div>
+  <button id="toggle">Saklar ON / OFF</button>
+  <div id="pick"></div>
+</div>
+
+<div class="box">
+  <div>Rumus: <b id="expr"></b></div>
+  <div id="keys"></div>
+  <button id="undo">Hapus</button>
+  <button id="clear">Kosongkan</button>
+  <button id="submit">Kirim rumus</button>
+  <div id="reply"></div>
+</div>
+
+<pre id="log"></pre>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+(function () {
+  'use strict';
+  var socket = io();
+  var st = null, calc = [], offset = 0;
+  var $ = function (id) { return document.getElementById(id); };
+
+  function log(s) { var el = $('log'); el.textContent = s + '\n' + el.textContent.slice(0, 4000); }
+  function btn(label, fn) { var b = document.createElement('button'); b.textContent = label; b.onclick = fn; return b; }
+  function vals(c) { return c.rank === 'A' ? [1, 11] : ('JQK'.indexOf(c.rank) >= 0 ? [10] : [parseInt(c.rank, 10)]); }
+  function me() { return st && st.players ? st.players[st.you] : null; }
+
+  $('join').onclick = function () {
+    socket.emit('join', { nickname: $('nick').value }, function (r) {
+      log('join: ' + JSON.stringify(r));
+      if (r.ok) $('me').textContent = 'Kursi ' + r.pid;
+    });
+  };
+  $('toggle').onclick = function () {
+    var m = me(); if (!m) return;
+    socket.emit('toggle', !m.on, function (r) { log('toggle: ' + JSON.stringify(r)); });
+  };
+  $('undo').onclick = function () { calc.pop(); draw(); };
+  $('clear').onclick = function () { calc = []; draw(); };
+  $('submit').onclick = function () {
+    socket.emit('submit', calc, function (r) { $('reply').textContent = JSON.stringify(r); log('submit: ' + JSON.stringify(r)); });
+  };
+
+  socket.on('state', function (s) { st = s; offset = s.serverNow - Date.now(); if (s.phase !== 'prove') calc = []; draw(); });
+  socket.on('event', function (e) { log('event ' + e.type + ' ' + JSON.stringify(e.data)); });
+  socket.on('fail', function (e) { log('fail ' + JSON.stringify(e)); });
+  socket.on('disconnect', function () { log('putus dari server'); });
+
+  function draw() {
+    if (!st) return;
+    var sec = st.deadline ? Math.max(0, Math.ceil((st.deadline - (Date.now() + offset)) / 1000)) : '-';
+    if (st.phase === 'lobby') {
+      $('info').textContent = 'Lobby: ' + st.players.length + '/' + st.need + ' pemain';
+      $('players').textContent = st.players.join(', ');
+      $('cards').textContent = ''; $('pick').textContent = ''; $('keys').textContent = '';
+      return;
+    }
+    $('info').textContent = 'Fase: ' + st.phase + ' | Ronde ' + st.round + '/' + st.totalRounds + ' | ' + sec + ' dtk | dek tersisa ' + st.deckLeft;
+    var pl = $('players'); pl.textContent = '';
+    st.players.forEach(function (p) {
+      var d = document.createElement('div');
+      d.textContent = (p.id === st.you ? '> ' : '  ') + p.name + ' | ' + (p.on ? 'ON' : 'OFF') + ' | penalti ' + p.penalty +
+        (p.id === st.accuser ? ' | penuding' : '') + (p.id === st.accused ? ' | dituding' : '');
+      if (p.on) d.className = 'on';
+      pl.appendChild(d);
+    });
+    $('cards').textContent = 'Kartu: ' + st.cards.map(function (c) { return c.rank + c.suit; }).join('  ');
+
+    var pk = $('pick'); pk.textContent = '';
+    if (st.phase === 'pick' && st.accuser === st.you) {
+      st.candidates.forEach(function (id) {
+        pk.appendChild(btn('Tuding ' + st.players[id].name, function () {
+          socket.emit('pick', id, function (r) { log('pick: ' + JSON.stringify(r)); });
+        }));
+      });
+    }
+
+    var keys = $('keys'); keys.textContent = '';
+    if (st.phase === 'prove' && st.accused === st.you) {
+      var used = {}; calc.forEach(function (t) { if (t.t === 'num') used[t.card] = 1; });
+      st.cards.forEach(function (c, i) {
+        vals(c).forEach(function (v) {
+          var b = btn(v + ' (' + c.rank + c.suit + ')', function () { calc.push({ t: 'num', v: v, card: i }); draw(); });
+          b.disabled = !!used[i]; keys.appendChild(b);
+        });
+      });
+      ['+', '-', '*', '/'].forEach(function (o) { keys.appendChild(btn(o, function () { calc.push({ t: 'op', v: o }); draw(); })); });
+      ['(', ')'].forEach(function (o) { keys.appendChild(btn(o, function () { calc.push({ t: o }); draw(); })); });
+    }
+    $('expr').textContent = calc.map(function (t) { return t.t === 'num' || t.t === 'op' ? t.v : t.t; }).join(' ');
+    if (st.result) $('reply').textContent = 'Hasil: ' + JSON.stringify(st.result);
+  }
+  setInterval(draw, 500);
+})();
+</script>
+</body>
+</html>
