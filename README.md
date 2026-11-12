@@ -161,6 +161,49 @@ Angka ini diatur di `PERSONAS` dalam `js/bot.js`.
 
 ---
 
+## Server online (Langkah 2)
+
+Server ada di folder `server/`. Isinya 1 room untuk 2 pemain, tanpa bot. Game mulai sendiri saat 2 pemain sudah masuk.
+
+```
+cd server
+npm install
+npm start
+```
+
+Lalu buka `http://127.0.0.1:3024` di 2 tab browser. Halaman ini cuma halaman uji polos (`server/dev-client.html`).
+
+Mau dicoba dari HP lewat Wi-Fi rumah? Jalankan `$env:HOST="0.0.0.0"; npm start` di PowerShell. Selama itu jalan, semua perangkat di Wi-Fi yang sama bisa membuka server.
+
+| File | Guna |
+|---|---|
+| `server/index.js` | HTTP + Socket.IO, `tick()` tiap 100 ms |
+| `server/room.js` | Room: join, aksi, cek pengirim, batas laju, kirim snapshot |
+| `server/engine.js` | Memuat mesin dari `js/` |
+| `server/test/server-test.js` | Tes room dan tes lewat socket sungguhan |
+
+| Pesan klien | Isi |
+|---|---|
+| `join` | `{ nickname }` |
+| `toggle` | `true` / `false` |
+| `pick` | id pemain yang dituding |
+| `submit` | daftar token rumus |
+
+Server membalas lewat `state` (snapshot), `event`, dan `fail`. Aturan pengamannya:
+
+- Token rumus dibangun ulang di server. Field yang tidak dikenal dibuang, dan jumlah token paling banyak 24.
+- Tiap pemain paling banyak mengirim 10 pesan per detik.
+- Pemain ketiga, atau yang masuk saat game sudah jalan, ditolak.
+
+Tes server:
+
+```
+cd server
+npm test
+```
+
+---
+
 ## Mesin untuk online (Langkah 1)
 
 `game.js` sudah siap dipakai server. Layar online dan server belum ada. Lihat `ONLINE_PLAN.md`.
@@ -237,7 +280,7 @@ Disimpan di `localStorage` browser.
 - [ ] Pilihan baru: hitung mundur baru mulai saat ada pemain yang menyala.
 - [ ] Multiplayer online (lihat `ONLINE_PLAN.md`):
   - [x] Langkah 1: mesin game untuk 2–4 kursi, banyak dek, pemain keluar, snapshot.
-  - [ ] Langkah 2: server minimal.
+  - [x] Langkah 2: server minimal.
   - [ ] Langkah 3: layar online, lobby, room, reconnect, emote.
 
 ---
