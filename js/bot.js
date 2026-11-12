@@ -45,13 +45,17 @@
     }
   }
 
+  // Bot sedikit lebih curiga pada manusia. Putuskan lagi setelah uji main online.
+  var HUMAN_SUSPICION_BONUS = 0.3;
+  var EARLY_ON_BONUS = 1.5;
+
   /** Pilih yang dituding. Yang ON paling cepat lebih dicurigai. */
   function chooseTarget(candidates, rng) {
     var minOrder = Math.min.apply(null, candidates.map(function (p) { return p.onOrder; }));
     var weights = candidates.map(function (p) {
       var w = 1;
-      if (p.onOrder === minOrder) w += 1.5;
-      if (p.human) w += 0.3;
+      if (p.onOrder === minOrder) w += EARLY_ON_BONUS;
+      if (p.human) w += HUMAN_SUSPICION_BONUS;
       return w;
     });
     var total = weights.reduce(function (a, b) { return a + b; }, 0);
@@ -63,5 +67,5 @@
     return candidates[candidates.length - 1].id;
   }
 
-  G.Bot = { PERSONAS: PERSONAS, planRound: planRound, maybePressure: maybePressure, chooseTarget: chooseTarget };
+  G.Bot = { PERSONAS: PERSONAS, HUMAN_SUSPICION_BONUS: HUMAN_SUSPICION_BONUS, planRound: planRound, maybePressure: maybePressure, chooseTarget: chooseTarget };
 })(globalThis.G24 = globalThis.G24 || {});
