@@ -149,6 +149,27 @@ async function socketTest() {
   var url = 'http://127.0.0.1:' + addr.port;
   var a, b, c;
   try {
+    // --- file statis: hanya daftar putih
+    function get(p) {
+      return new Promise(function (res) {
+        require('http').get(url + p, function (r) {
+          var chunks = []; r.on('data', function (d) { chunks.push(d); });
+          r.on('end', function () { res({ code: r.statusCode, type: r.headers['content-type'], body: Buffer.concat(chunks).toString() }); });
+        });
+      });
+    }
+    var home = await get('/');
+    ok(home.code === 200 && /text\/html/.test(home.type) && home.body.indexOf('Mathfia') >= 0, 'static: / = index.html');
+    ok((await get('/js/net.js')).code === 200 && /javascript/.test((await get('/js/ui.js')).type), 'static: file js ada');
+    ok((await get('/style.css')).code === 200, 'static: style.css ada');
+    ok((await get('/dev')).body.indexOf('dev client') >= 0, 'static: /dev = halaman uji');
+    var blocked = ['/server/room.js', '/server/package.json', '/README.md', '/ONLINE_PLAN.md', '/.git/config', '/../package.json',
+      '/js/../server/index.js', '/%2e%2e/README.md', '/js/', '/js/nope.js', '/constructor', '/__proto__'];
+    for (var bi = 0; bi < blocked.length; bi++) {
+      var br = await get(blocked[bi]);
+      ok(br.code === 404, 'static: ' + blocked[bi] + ' ditolak');
+    }
+
     a = await connect(url); b = await connect(url);
     ok((await call(a, 'join', { nickname: 'Ana' })).pid === 0, 'socket: Ana join');
     ok((await call(b, 'join', { nickname: 'Budi' })).pid === 1, 'socket: Budi join');

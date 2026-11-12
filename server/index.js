@@ -15,16 +15,31 @@ var G = require('./engine');
 var Room = require('./room').Room;
 
 var TICK_MS = 100;
-var DEV_CLIENT = path.join(__dirname, 'dev-client.html');
+var ROOT = path.join(__dirname, '..');
+var TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8' };
+
+// Daftar file yang boleh dikirim ke browser (mode dev). Hosting statis terpisah baru di Langkah 4.
+var STATIC = { '/dev': path.join(__dirname, 'dev-client.html') };
+['index.html', 'style.css'].forEach(function (f) { STATIC['/' + f] = path.join(ROOT, f); });
+STATIC['/'] = STATIC['/index.html'];
+['fraction', 'cards', 'deck', 'solver', 'parser', 'bot', 'game', 'i18n', 'sound', 'net', 'ui'].forEach(function (f) {
+  STATIC['/js/' + f + '.js'] = path.join(ROOT, 'js', f + '.js');
+});
 
 function createServer(opts) {
   opts = opts || {};
   var httpServer = http.createServer(function (req, res) {
-    // Hanya satu halaman uji. Tidak ada folder statis, jadi tidak ada risiko path traversal.
-    if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
-      fs.readFile(DEV_CLIENT, function (err, buf) {
-        if (err) { res.writeHead(500); res.end('dev-client tidak ada'); return; }
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+    // Hanya file di daftar putih STATIC. Tidak ada folder bebas, jadi tidak ada path traversal.
+    var url = (req.url || '').split('?')[0];
+    var file = req.method === 'GET' && STATIC.hasOwnProperty(url) ? STATIC[url] : null;
+    if (file) {
+      fs.readFile(file, function (err, buf) {
+        if (err) { res.writeHead(500, { 'Content-Type': 'text/plain' }); res.end('file tidak ada'); return; }
+        res.writeHead(200, {
+          'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream',
+          'Cache-Control': 'no-store',
+          'X-Content-Type-Options': 'nosniff'
+        });
         res.end(buf);
       });
       return;

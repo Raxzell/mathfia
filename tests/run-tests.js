@@ -1,7 +1,7 @@
 /* Jalankan: node tests/run-tests.js */
 'use strict';
 var path = require('path');
-['fraction', 'deck', 'solver', 'parser', 'bot', 'game'].forEach(function (f) {
+['fraction', 'cards', 'deck', 'solver', 'parser', 'bot', 'game'].forEach(function (f) {
   require(path.join(__dirname, '..', 'js', f + '.js'));
 });
 var G = globalThis.G24;
@@ -350,7 +350,7 @@ var BOTS4 = [B('A', 'honest'), B('B', 'bluffer'), B('C', 'medium'), B('D', 'medi
 // --- snapshotFor: hanya whitelist
 (function () {
   var TOP = ['you', 'phase', 'round', 'totalRounds', 'cards', 'deckLeft', 'accuser', 'accused', 'candidates',
-    'deadline', 'phaseTotal', 'serverNow', 'result', 'players'];
+    'deadline', 'phaseTotal', 'serverNow', 'result', 'standings', 'players'];
   var PL = ['id', 'name', 'human', 'on', 'penalty', 'out'];
   var FORBID = ['"plan"', '"deck"', '"botPick"', '"onOrder"', '"actions"', '"knows"', '"leaving"', '"connected"'];
   var t = mk({ seats: [B('A', 'bluffer'), B('B', 'honest'), H('X')] }, 81, false), g = t.g;
@@ -364,6 +364,7 @@ var BOTS4 = [B('A', 'honest'), B('B', 'bluffer'), B('C', 'medium'), B('D', 'medi
     return s;
   }
   var s1 = checkSnap('observe', false, false);
+  ok(s1.standings.length === 0, 'observe: standings kosong sebelum game selesai');
   ok(s1.you === 2 && s1.cards.length === 4 && s1.deckLeft === 48 && s1.totalRounds === 13, 'observe: isi snapshot benar');
   s1.cards[0].rank = 'Z'; s1.players[0].penalty = 99;
   ok(g.cards[0].rank !== 'Z' && g.players[0].penalty !== 99, 'snapshot adalah salinan');
@@ -379,6 +380,7 @@ var BOTS4 = [B('A', 'honest'), B('B', 'bluffer'), B('C', 'medium'), B('D', 'medi
   while (g.phase !== 'end') { t.c.now += 100; g.tick(); }
   var s5 = checkSnap('end', true, true);
   ok(s5.players[0].persona === 'bluffer', 'end: persona dibuka');
+  ok(s5.standings.length === 3 && s5.standings.every(function (x) { return sameSet(Object.keys(x), ['id', 'penalty', 'tag', 'out']); }), 'end: standings ada, field terbatas');
   var g0 = new G.Game();
   ok(noThrow(function () { return g0.snapshotFor(0).phase; }) === 'idle', 'snapshot saat idle tidak crash');
 })();

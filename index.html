@@ -41,15 +41,30 @@
     </div>
     <div class="speed" id="speed" role="group"></div>
     <button class="btn pri start" id="start" data-i18n="start"></button>
+    <div class="online-box">
+      <div class="or" data-i18n="orOnline"></div>
+      <div class="online-row">
+        <input id="nick" type="text" maxlength="16" autocomplete="off" data-i18n-ph="nickPh" aria-label="Nickname">
+        <button class="btn" id="online" data-i18n="online"></button>
+      </div>
+      <div class="online-msg" id="onlineMsg" role="status"></div>
+    </div>
     <details class="howto">
       <summary data-i18n="howto"></summary>
       <div class="howtoHtml"></div>
     </details>
   </section>
 
+  <section id="lobby" class="panel lobby hidden">
+    <div class="stamp big" data-i18n="lobbyTitle"></div>
+    <p class="muted" id="lobbyInfo"></p>
+    <div class="lineup lobby-names" id="lobbyNames"></div>
+    <button class="btn" id="lobbyLeave" data-i18n="cancel"></button>
+  </section>
+
   <section id="game" class="hidden">
     <div class="meta">
-      <div class="round"><span data-i18n="round"></span> <b id="rn">1</b><small>/13</small></div>
+      <div class="round"><span data-i18n="round"></span> <b id="rn">1</b><small id="rnTotal">/13</small></div>
       <div class="phase" id="phaseLabel"></div>
       <div class="clock" id="clock"><b id="sec">45</b></div>
     </div>
@@ -85,6 +100,7 @@
 </div>
 
 <script src="js/fraction.js"></script>
+<script src="js/cards.js"></script>
 <script src="js/deck.js"></script>
 <script src="js/solver.js"></script>
 <script src="js/parser.js"></script>
@@ -92,6 +108,7 @@
 <script src="js/game.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/sound.js"></script>
+<script src="js/net.js"></script>
 <script src="js/ui.js"></script>
 </body>
 </html>

@@ -1,10 +1,9 @@
-/* Dek 52 kartu, nilai kartu, dan pengocok. */
+/* Dek 52 kartu dan pengocok. Hanya server (dan mode solo) yang butuh file ini. Butuh cards.js. */
 (function (G) {
   'use strict';
 
   var SUITS = ['S', 'H', 'D', 'C'];
   var RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-  var SYMBOL = { S: '♠', H: '♥', D: '♦', C: '♣' };
 
   function makeDeck() {
     var deck = [];
@@ -12,13 +11,6 @@
       RANKS.forEach(function (r) { deck.push({ rank: r, suit: s, id: r + s }); });
     });
     return deck;
-  }
-
-  /** Nilai yang boleh dipakai kartu ini. As = 1 atau 11. */
-  function values(card) {
-    if (card.rank === 'A') return [1, 11];
-    if (card.rank === 'J' || card.rank === 'Q' || card.rank === 'K') return [10];
-    return [parseInt(card.rank, 10)];
   }
 
   function defaultRng() {
@@ -41,7 +33,9 @@
     return a;
   }
 
-  function isRed(card) { return card.suit === 'H' || card.suit === 'D'; }
-
-  G.Deck = { makeDeck: makeDeck, values: values, shuffle: shuffle, isRed: isRed, SYMBOL: SYMBOL };
+  // values, isRed, SYMBOL tetap tersedia di G.Deck supaya kode lama tidak patah.
+  G.Deck = {
+    makeDeck: makeDeck, shuffle: shuffle,
+    values: G.Cards.values, isRed: G.Cards.isRed, SYMBOL: G.Cards.SYMBOL
+  };
 })(globalThis.G24 = globalThis.G24 || {});

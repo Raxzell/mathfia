@@ -171,7 +171,11 @@ npm install
 npm start
 ```
 
-Lalu buka `http://127.0.0.1:3024` di 2 tab browser. Halaman ini cuma halaman uji polos (`server/dev-client.html`).
+Lalu buka `http://127.0.0.1:3024` di 2 tab browser. Server mengirim layar asli Mathfia. Di menu, isi nama, lalu tekan **Main online**. Kalau server sudah jalan dari sebelumnya, matikan dulu (`Ctrl + C`) lalu `npm start` lagi.
+
+Halaman uji polos masih ada di `http://127.0.0.1:3024/dev` (`server/dev-client.html`).
+
+Solo tetap bisa dibuka langsung dari `index.html`. Main online tidak jalan dari file, karena butuh server.
 
 Mau dicoba dari HP lewat Wi-Fi rumah? Jalankan `$env:HOST="0.0.0.0"; npm start` di PowerShell. Selama itu jalan, semua perangkat di Wi-Fi yang sama bisa membuka server.
 
@@ -180,6 +184,8 @@ Mau dicoba dari HP lewat Wi-Fi rumah? Jalankan `$env:HOST="0.0.0.0"; npm start` 
 | `server/index.js` | HTTP + Socket.IO, `tick()` tiap 100 ms |
 | `server/room.js` | Room: join, aksi, cek pengirim, batas laju, kirim snapshot |
 | `server/engine.js` | Memuat mesin dari `js/` |
+| `js/net.js` | Penghubung layar ke sumber game: `Session.solo()` (mesin lokal) atau `Session.online()` (server) |
+| `js/cards.js` | Nilai dan simbol kartu. Dipakai server dan layar. `deck.js` (kocok kartu) tidak dipakai layar online. |
 | `server/test/server-test.js` | Tes room dan tes lewat socket sungguhan |
 
 | Pesan klien | Isi |
@@ -282,6 +288,9 @@ Disimpan di `localStorage` browser.
   - [x] Langkah 1: mesin game untuk 2–4 kursi, banyak dek, pemain keluar, snapshot.
   - [x] Langkah 2: server minimal.
   - [ ] Langkah 3: layar online, lobby, room, reconnect, emote.
+    - [x] 3a: layar asli jalan lewat server (1 room, 2 pemain). Solo tetap jalan.
+    - [ ] 3b: kode room, link `/r/<kode>`, daftar room, tombol Bagikan.
+    - [ ] 3c: reconnect, bot di room, opsi host, emote.
 
 ---
 

@@ -1,24 +1,32 @@
-/* Layar: menggambar state game dan menerima klik. */
+/* Layar: menggambar state game dan menerima klik. Sumber game: solo (lokal) atau online (server). */
 (function (G) {
   'use strict';
-  var I = G.I18n, T = I.t, S = G.Sound, Deck = G.Deck, Parser = G.Parser;
-  var HUMAN = G.Game.HUMAN;
-  var game = new G.Game();
+  var I = G.I18n, T = I.t, S = G.Sound, Cards = G.Cards, Parser = G.Parser;
+  var soloNet = G.Session.solo();
+  var net = soloNet;      // sesi yang sedang dipakai
+  var game = net.view;    // data layar dari sesi itu
   var $ = function (id) { return document.getElementById(id); };
-  var ui = { calc: [], err: null, lastRound: -1, lastSec: null, bubbleT: {}, log: '', prevPen: [0, 0, 0, 0] };
+  var ui = { calc: [], err: null, lastRound: -1, lastSec: null, bubbleT: {}, log: '', prevPen: [0, 0, 0, 0], seatKey: '', menuMsg: '' };
+  var store = (function () { try { return localStorage; } catch (e) { return null; } })();
 
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
-  function nm(pid) { var p = game.players[pid]; return p.human ? T('you') : p.name; }
+  function nm(pid) {
+    if (pid === game.you) return T('you');
+    var p = game.players[pid];
+    return p && p.name ? p.name : '';
+  }
+  function isBot(pid) { var p = game.players[pid]; return !!p && !p.human; }
 
   // ---------- wajah noir (topi fedora) ----------
   var HAT = ['#2b2b31', '#3d1517', '#1c2a34', '#0e0e11'];
   var BAND = ['#c9a14a', '#e3342f', '#7fa6bd', '#f2b84b'];
   var SKIN = ['#d9cdb5', '#e2c9b0', '#c8b79c', '#d6c6a8'];
   function avatar(i) {
+    i = i % 4;
     return '<svg viewBox="0 0 64 64" aria-hidden="true">' +
       '<path d="M12 64c2-12 9-17 20-17s18 5 20 17z" fill="#24242a"/>' +
       '<path d="M26 47l6 7 6-7z" fill="' + BAND[i] + '" opacity=".8"/>' +
@@ -38,44 +46,57 @@
   function applyStatic() {
     document.documentElement.lang = I.lang;
     document.querySelectorAll('[data-i18n]').forEach(function (el) { el.textContent = T(el.getAttribute('data-i18n')); });
+    document.querySelectorAll('[data-i18n-ph]').forEach(function (el) { el.setAttribute('placeholder', T(el.getAttribute('data-i18n-ph'))); });
     document.querySelectorAll('[data-lang]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-lang') === I.lang)); });
     $('sound').textContent = T(S.muted ? 'soundOff' : 'soundOn');
     document.querySelectorAll('.howtoHtml').forEach(function (el) { el.innerHTML = T('howtoHtml'); });
     renderLineup();
     renderSpeed();
+    renderMenuMsg();
   }
 
-  // ---------- kursi bot ----------
+  // ---------- kursi lawan ----------
+  function opponents() {
+    return game.players.filter(function (p) { return p.id !== game.you; });
+  }
+
   function buildSeats() {
+    var opp = opponents();
     var h = '';
-    for (var i = 0; i < 3; i++) {
+    opp.forEach(function (p) {
+      var i = p.id;
       h += '<div class="seat" id="seat' + i + '">' +
         '<div class="bubble" id="bub' + i + '"></div>' +
         '<div class="ava">' + avatar(i) + '</div>' +
-        '<div><div class="name">' + esc(game.players[i].name) + '</div>' +
+        '<div><div class="name">' + esc(p.name || '') + '</div>' +
         '<span class="lamp" id="lamp' + i + '"><i></i><span></span></span></div>' +
-        '<div class="pen" id="penw' + i + '"><b id="pen' + i + '">0</b><em data-i18n="penalty">' + T('penalty') + '</em></div>' +
+        '<div class="pen" id="penw' + i + '"><b id="pen' + i + '">0</b><em>' + T('penalty') + '</em></div>' +
         '<button class="btn danger accuse hidden" id="acc' + i + '" data-pick="' + i + '"></button>' +
         '</div>';
-    }
-    $('bots').innerHTML = h;
+    });
+    var box = $('bots');
+    box.innerHTML = h;
+    box.style.setProperty('--n', opp.length);
+    box.className = 'bots' + (opp.length === 1 ? ' n1' : '');
   }
 
   function bumpPen(el, pid) {
     var p = game.players[pid];
-    if (p.penalty > ui.prevPen[pid]) {
+    if (el && p && p.penalty > ui.prevPen[pid]) {
       el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
     }
   }
 
   function renderSeats() {
+    var key = game.players.map(function (p) { return p.id + ':' + p.name; }).join('|') + '/' + game.you;
+    if (key !== ui.seatKey) { ui.seatKey = key; buildSeats(); }
     var ph = game.phase;
-    for (var i = 0; i < 3; i++) {
-      var p = game.players[i], cls = 'seat';
+    opponents().forEach(function (p) {
+      var i = p.id, cls = 'seat';
       if (p.on) cls += ' on';
       var isCand = ph === 'pick' && game.candidates.indexOf(i) >= 0;
       if (ph === 'pick' && !isCand && game.accuser !== i) cls += ' dim';
-      if (isCand && game.accuser === HUMAN) cls += ' cand';
+      if (isCand && game.accuser === game.you) cls += ' cand';
       if ((ph === 'pick' || ph === 'prove') && game.accuser === i) cls += ' accuser';
       if (ph === 'prove' && game.accused === i) cls += ' target';
       var el = $('seat' + i);
@@ -86,15 +107,16 @@
       $('pen' + i).textContent = p.penalty;
       bumpPen($('penw' + i), i);
       var btn = $('acc' + i);
-      var showBtn = isCand && game.accuser === HUMAN;
+      var showBtn = isCand && game.accuser === game.you;
       btn.classList.toggle('hidden', !showBtn);
       if (showBtn) btn.textContent = T('accuseBtn', { n: p.name });
-    }
+    });
   }
 
   function bubble(pid, text) {
-    if (pid === HUMAN || !text) return;
+    if (pid === game.you || !isBot(pid) || !text) return;
     var el = $('bub' + pid);
+    if (!el) return;
     el.textContent = text;
     el.classList.add('show');
     clearTimeout(ui.bubbleT[pid]);
@@ -103,9 +125,9 @@
 
   // ---------- kartu ----------
   function cardFace(c) {
-    var s = Deck.SYMBOL[c.suit];
+    var s = Cards.SYMBOL[c.suit];
     var val = c.rank === 'A' ? '1 / 11' : (c.rank === 'J' || c.rank === 'Q' || c.rank === 'K') ? '= 10' : '';
-    return '<div class="face front' + (Deck.isRed(c) ? ' red' : '') + '">' +
+    return '<div class="face front' + (Cards.isRed(c) ? ' red' : '') + '">' +
       '<div class="corner"><b>' + c.rank + '</b><span>' + s + '</span></div>' +
       '<div class="pip">' + s + '</div>' +
       '<div class="corner br"><b>' + c.rank + '</b><span>' + s + '</span></div>' +
@@ -117,7 +139,7 @@
     ui.calc.forEach(function (t) { if (t.t === 'num') u[t.card] = true; });
     return u;
   }
-  function humanProving() { return game.phase === 'prove' && game.accused === HUMAN; }
+  function humanProving() { return game.phase === 'prove' && game.accused === game.you; }
 
   function renderCards() {
     if (game.round !== ui.lastRound) {
@@ -131,10 +153,11 @@
     var u = usedCards(), proving = humanProving();
     game.cards.forEach(function (c, i) {
       var el = $('card' + i);
+      if (!el) return;
       el.classList.toggle('used', proving && !!u[i]);
       el.classList.toggle('tap', proving && !u[i] && c.rank !== 'A');
     });
-    $('deckInfo').textContent = T('deckLeft', { k: game.deck.length });
+    $('deckInfo').textContent = T('deckLeft', { k: game.deckLeft });
   }
 
   // ---------- panel kamu ----------
@@ -156,12 +179,12 @@
       (ui.calc.length ? '<span>' + ui.calc.map(tokLabel).join(' ') + '</span>' : '<span class="ph">' + T('placeholder') + '</span>') +
       res + '</div><div class="keys">';
     game.cards.forEach(function (c, i) {
-      var s = Deck.SYMBOL[c.suit], red = Deck.isRed(c) ? ' red' : '', dis = u[i] ? ' disabled' : '';
+      var s = Cards.SYMBOL[c.suit], red = Cards.isRed(c) ? ' red' : '', dis = u[i] ? ' disabled' : '';
       if (c.rank === 'A') {
         h += '<button class="key c' + red + '" data-card="' + i + '" data-v="1"' + dis + '>1<small>A' + s + '</small></button>';
         h += '<button class="key c' + red + '" data-card="' + i + '" data-v="11"' + dis + '>11<small>A' + s + '</small></button>';
       } else {
-        var v = Deck.values(c)[0];
+        var v = Cards.values(c)[0];
         h += '<button class="key c' + red + '" data-card="' + i + '" data-v="' + v + '"' + dis + '>' + v + '<small>' + c.rank + s + '</small></button>';
       }
     });
@@ -177,15 +200,15 @@
   }
 
   function renderMe() {
-    var me = game.players[HUMAN], ph = game.phase, h = '';
+    var me = game.players[game.you], ph = game.phase, h = '';
     var canToggle = ph === 'observe';
-    h += '<div class="me-row"><div class="me-id"><div class="ava">' + avatar(3) + '</div><div>' +
+    h += '<div class="me-row"><div class="me-id"><div class="ava">' + avatar(game.you) + '</div><div>' +
       '<div class="name">' + T('you') + '</div>' +
-      '<div class="pen" id="penw3"><b>' + me.penalty + '</b><em>' + T('penalty') + '</em></div></div></div>' +
+      '<div class="pen" id="penwMe"><b>' + me.penalty + '</b><em>' + T('penalty') + '</em></div></div></div>' +
       '<button class="sw' + (me.on ? ' is-on' : '') + '" role="switch" aria-checked="' + me.on + '" id="sw"' + (canToggle ? '' : ' disabled') + '>' +
       '<span class="track"><span class="knob"></span></span>' +
       '<span class="sw-txt"><b>' + T(me.on ? 'meOn' : 'meOff') + '</b><small>' + T(canToggle ? 'meHint' : 'meLocked') + '</small></span></button></div>';
-    if (ph === 'pick' && game.accuser === HUMAN) {
+    if (ph === 'pick' && game.accuser === game.you) {
       h += '<div class="sub"><b>' + T('pickTitle') + '</b><p>' + T('pickHint') + '</p><div class="pick">' +
         game.candidates.map(function (id) { return '<button class="btn danger" data-pick="' + id + '">' + T('accuseBtn', { n: esc(nm(id)) }) + '</button>'; }).join('') +
         '</div></div>';
@@ -194,17 +217,17 @@
     var el = $('me');
     el.innerHTML = h;
     el.className = 'panel' + (me.on ? ' on' : '') + (humanProving() ? ' hot' : '');
-    bumpPen($('penw3'), HUMAN);
+    bumpPen($('penwMe'), game.you);
   }
 
   // ---------- pengumuman ----------
   function renderBanner() {
     var b = $('banner'), ph = game.phase, h = '', info = false;
     if (ph === 'pick') {
-      if (game.accuser === HUMAN) h = '<b>' + T('pickTitle') + '</b>';
+      if (game.accuser === game.you) h = '<b>' + T('pickTitle') + '</b>';
       else { h = '<b>' + T('botPicking', { n: esc(nm(game.accuser)) }) + '</b>'; info = true; }
     } else if (ph === 'prove') {
-      if (game.accused === HUMAN) h = '<b>' + T('accusedYou', { a: esc(nm(game.accuser)) }) + '</b><span>' + T('accusedYouHint') + '</span>';
+      if (game.accused === game.you) h = '<b>' + T('accusedYou', { a: esc(nm(game.accuser)) }) + '</b><span>' + T('accusedYouHint') + '</span>';
       else h = '<b>' + T('botAccused', { a: esc(nm(game.accuser)), t: esc(nm(game.accused)) }) + '</b><span>' + T('botProving', { t: esc(nm(game.accused)) }) + '</span>';
     }
     b.className = 'banner' + (info ? ' info' : '') + (h ? '' : ' hidden');
@@ -231,35 +254,44 @@
     if (!(r.kind === 'proof' && r.success)) {
       sol = '<div class="sol">' + (r.solution ? esc(T('solution', { e: Parser.pretty(r.solution.expr) })) : T('impossible')) + '</div>';
     }
-    var last = game.round >= G.Game.ROUNDS;
+    var last = game.round >= game.totalRounds;
+    // Online: ronde lanjut sendiri dari server, jadi tidak ada tombol.
+    var nextBtn = net.mode === 'solo' ? '<button class="btn" id="next">' + T(last ? 'finish' : 'next') + '</button>' : '';
     box.innerHTML = '<div class="file"><div class="stamp' + scls + '">' + T(stamp) + '</div>' +
       (big ? '<div class="expr-big">' + big + '</div>' : '') +
       '<p>' + text + '</p>' + (gains.length ? '<div class="gains">' + gains.join('') + '</div>' : '') + sol +
-      '<div class="row"><button class="btn" id="next">' + T(last ? 'finish' : 'next') + '</button><small id="autoNext"></small></div></div>';
+      '<div class="row">' + nextBtn + '<small id="autoNext"></small></div></div>';
     box.classList.remove('hidden');
   }
 
   // ---------- akhir ----------
   function renderEnd() {
-    var end = game.phase === 'end';
-    $('game').classList.toggle('hidden', end);
-    $('final').classList.toggle('hidden', !end);
-    if (!end) return;
     var h = '<tr><th>' + T('player') + '</th><th>' + T('status') + '</th><th style="text-align:right">' + T('pens') + '</th></tr>';
-    game.standings().forEach(function (s, i) {
+    game.standings.forEach(function (s, i) {
       var p = game.players[s.id];
       h += '<tr class="' + s.tag + '" style="animation-delay:' + (i * 0.12) + 's"><td><span class="who">' + esc(nm(s.id)) + '</span>' +
-        (p.persona ? '<small>' + T('persona_' + p.persona) + '</small>' : '') + '</td>' +
+        (p && p.persona ? '<small>' + T('persona_' + p.persona) + '</small>' : '') + '</td>' +
         '<td>' + (s.tag ? T(s.tag) : '') + '</td><td class="n">' + s.penalty + '</td></tr>';
     });
     $('board').innerHTML = h;
+  }
+
+  // ---------- lobby online ----------
+  function renderLobby() {
+    var names = game.lobbyNames || [];
+    $('lobbyInfo').textContent = T('lobbyWait', { k: names.length, n: game.need });
+    $('lobbyNames').innerHTML = names.map(function (n, i) {
+      return '<div class="suspect' + (i === game.you ? ' you' : '') + '"><div class="ava">' + avatar(i) + '</div>' +
+        '<div class="name">' + esc(n) + '</div></div>';
+    }).join('');
   }
 
   // ---------- jam ----------
   function renderTimer() {
     var ph = game.phase, rem = game.remaining(), total = game.phaseTotal || 1;
     var sec = Math.ceil(rem / 1000);
-    var botPicking = ph === 'pick' && game.accuser !== HUMAN;
+    var accP = game.players[game.accuser];
+    var botPicking = ph === 'pick' && !(accP && accP.human);
     var timed = ph === 'observe' || ph === 'prove' || (ph === 'pick' && !botPicking);
     $('bar').firstElementChild.style.width = (timed ? (rem / total) * 100 : 0) + '%';
     var warn = (ph === 'observe' || ph === 'prove') && sec <= 10;
@@ -274,6 +306,7 @@
 
   function renderMeta() {
     $('rn').textContent = game.round;
+    $('rnTotal').textContent = '/' + game.totalRounds;
     var pl = $('phaseLabel');
     pl.textContent = T('phase_' + game.phase);
     pl.className = 'phase' + (game.phase === 'pick' || game.phase === 'prove' ? ' hot' : '');
@@ -283,9 +316,8 @@
   // ---------- menu ----------
   var LINEUP = [['Bot A', 'honest'], ['Bot B', 'bluffer'], ['Bot C', 'medium']];
 
-  // ---------- pilihan waktu mengamati ----------
+  // ---------- pilihan waktu mengamati (solo) ----------
   var SPEEDS = { relax: 120000, normal: 90000, fast: 45000 };
-  var store = (function () { try { return localStorage; } catch (e) { return null; } })();
   var speed = (store && store.getItem('g24_speed')) || 'normal';
   if (!SPEEDS[speed]) speed = 'normal';
   function renderSpeed() {
@@ -319,33 +351,38 @@
       '<div class="suspect you" style="--i:3"><div class="ava">' + avatar(3) + '</div>' +
       '<div class="name">' + T('you') + '</div><small>&nbsp;</small></div>';
   }
+  function renderMenuMsg() {
+    var el = $('onlineMsg');
+    if (el) el.textContent = ui.menuMsg ? T(ui.menuMsg) : '';
+  }
 
-  function showMenu(on) {
-    $('menu').classList.toggle('hidden', !on);
-    $('toMenu').classList.toggle('hidden', on);
-    $('restart').classList.toggle('hidden', on);
-    if (on) { $('game').classList.add('hidden'); $('final').classList.add('hidden'); }
+  function showScreen(name) {
+    ['menu', 'lobby', 'game', 'final'].forEach(function (s) { $(s).classList.toggle('hidden', s !== name); });
+    $('toMenu').classList.toggle('hidden', name === 'menu');
+    $('restart').classList.toggle('hidden', name === 'menu' || name === 'lobby' || net.mode !== 'solo');
   }
 
   function renderAll() {
-    showMenu(game.phase === 'idle');
-    if (game.phase === 'idle') return;
-    renderEnd();
-    if (game.phase !== 'end') {
+    var ph = game.phase;
+    if (ph === 'idle') { showScreen('menu'); renderMenuMsg(); return; }
+    if (ph === 'lobby') { showScreen('lobby'); renderLobby(); return; }
+    if (ph === 'end') { showScreen('final'); renderEnd(); }
+    else {
+      showScreen('game');
       renderMeta(); renderSeats(); renderCards(); renderMe(); renderBanner(); renderResult(); renderTimer();
     }
     ui.prevPen = game.players.map(function (p) { return p.penalty; });
   }
 
-  // ---------- kejadian dari mesin ----------
-  game.on(function (type, d) {
-    if (type === 'newgame') { ui.lastRound = -1; ui.prevPen = [0, 0, 0, 0]; }
+  // ---------- kejadian dari sesi ----------
+  function onNet(type, d) {
+    if (type === 'newgame') { ui.lastRound = -1; ui.prevPen = [0, 0, 0, 0]; ui.seatKey = ''; ui.menuMsg = ''; }
     if (type === 'round') { ui.calc = []; ui.err = null; ui.log = T('log_start', { r: game.round }); }
     if (type === 'toggle') {
       ui.log = T(d.on ? 'log_on' : 'log_off', { n: nm(d.pid) });
-      if (d.pid !== HUMAN) { bubble(d.pid, I.pick(d.on ? 'quip_on' : 'quip_off')); S[d.on ? 'on' : 'off'](); }
+      if (d.pid !== game.you) { bubble(d.pid, I.pick(d.on ? 'quip_on' : 'quip_off')); S[d.on ? 'on' : 'off'](); }
     }
-    if (type === 'pick') { S.alarm(); if (game.accuser !== HUMAN) bubble(game.accuser, I.pick('quip_think')); }
+    if (type === 'pick') { S.alarm(); if (game.accuser !== game.you) bubble(game.accuser, I.pick('quip_think')); }
     if (type === 'prove') {
       ui.calc = []; ui.err = null;
       ui.log = T('botAccused', { a: nm(game.accuser), t: nm(game.accused) });
@@ -356,18 +393,56 @@
     if (type === 'result') {
       var r = game.result;
       S.stamp();
-      if (r.kind === 'proof') {
+      if (r && r.kind === 'proof') {
         bubble(r.accused, I.pick(r.success ? 'quip_ok' : 'quip_fail'));
-        var humanLost = r.gains.some(function (g) { return g.pid === HUMAN; });
-        if (!humanLost && (r.accuser === HUMAN || r.accused === HUMAN)) setTimeout(S.good, 350);
+        var humanLost = r.gains.some(function (g) { return g.pid === game.you; });
+        if (!humanLost && (r.accuser === game.you || r.accused === game.you)) setTimeout(S.good, 350);
       }
     }
     if (type === 'end') {
-      var st = game.standings().filter(function (s) { return s.id === HUMAN; })[0];
-      setTimeout(st.tag === 'loser' ? S.lose : S.win, 300);
+      var st = game.standings.filter(function (s) { return s.id === game.you; })[0];
+      setTimeout(st && st.tag === 'loser' ? S.lose : S.win, 300);
     }
+    if (type === 'disconnected') { ui.menuMsg = 'lostServer'; }
     if (type === 'change') renderAll();
-  });
+  }
+
+  function useSession(s) {
+    if (net === s) return;
+    net = s; game = s.view;
+    ui.seatKey = ''; ui.lastRound = -1;
+  }
+  soloNet.on(onNet);
+
+  // ---------- mulai solo / online ----------
+  function startSolo() {
+    useSession(soloNet);
+    ui.menuMsg = '';
+    soloNet.start(SPEEDS[speed]);
+    window.scrollTo(0, 0);
+  }
+
+  function startOnline() {
+    var nick = ($('nick').value || '').trim();
+    if (store) store.setItem('g24_nick', nick);
+    var o = G.Session.online();
+    o.on(onNet);
+    ui.menuMsg = 'onlineConnecting';
+    renderMenuMsg();
+    $('online').disabled = true;
+    o.connect(nick, function (err) {
+      $('online').disabled = false;
+      if (err) {
+        ui.menuMsg = { file: 'onlineFile', noserver: 'onlineNoServer', full: 'join_full', started: 'join_started' }[err] || 'join_failed';
+        renderMenuMsg();
+        return;
+      }
+      ui.menuMsg = '';
+      useSession(o);
+      window.scrollTo(0, 0);
+      renderAll();
+    });
+  }
 
   // ---------- klik ----------
   function pushCard(i, v) {
@@ -380,7 +455,7 @@
     var tap = e.target.closest('[data-tap]');
     if (tap && humanProving()) {
       var ci = +tap.getAttribute('data-tap'), c = game.cards[ci];
-      if (c.rank !== 'A') pushCard(ci, Deck.values(c)[0]);
+      if (c.rank !== 'A') pushCard(ci, Cards.values(c)[0]);
       return;
     }
     var b = e.target.closest('button');
@@ -392,11 +467,24 @@
       if (store) store.setItem('g24_speed', speed);
       S.click(); renderSpeed(); return;
     }
-    if (b.id === 'start' || b.id === 'restart' || b.id === 'again') { S.click(); game.observeMs = SPEEDS[speed]; game.newGame(); window.scrollTo(0, 0); return; }
-    if (b.id === 'toMenu' || b.id === 'backMenu') { S.click(); game.stop(); window.scrollTo(0, 0); return; }
-    if (b.id === 'sw') { var me = game.players[HUMAN]; S[me.on ? 'off' : 'on'](); game.setOn(HUMAN, !me.on); return; }
-    if (b.id === 'next') { S.click(); game.next(); return; }
-    if (b.hasAttribute('data-pick')) { S.click(); game.accuse(+b.getAttribute('data-pick')); return; }
+    if (b.id === 'start') { S.click(); startSolo(); return; }
+    if (b.id === 'online') { S.click(); startOnline(); return; }
+    if (b.id === 'restart') { S.click(); if (net.mode === 'solo') startSolo(); return; }
+    if (b.id === 'again') {
+      S.click();
+      if (net.mode === 'solo') startSolo();
+      else net.again(function (err) {
+        if (err) { ui.menuMsg = err === 'started' ? 'join_started' : 'join_failed'; renderAll(); }
+        window.scrollTo(0, 0);
+      });
+      return;
+    }
+    if (b.id === 'toMenu' || b.id === 'backMenu' || b.id === 'lobbyLeave') {
+      S.click(); ui.menuMsg = ''; net.leave(); window.scrollTo(0, 0); return;
+    }
+    if (b.id === 'sw') { var me = game.players[game.you]; S[me.on ? 'off' : 'on'](); net.toggle(!me.on); return; }
+    if (b.id === 'next') { S.click(); net.next(); return; }
+    if (b.hasAttribute('data-pick')) { S.click(); net.pick(+b.getAttribute('data-pick')); return; }
     if (!humanProving()) return;
     if (b.hasAttribute('data-card')) { pushCard(+b.getAttribute('data-card'), +b.getAttribute('data-v')); return; }
     if (b.hasAttribute('data-op')) {
@@ -407,8 +495,9 @@
     if (b.id === 'undo') { ui.calc.pop(); ui.err = null; renderAll(); return; }
     if (b.id === 'clr') { ui.calc = []; ui.err = null; renderAll(); return; }
     if (b.id === 'sub') {
-      var r = game.submit(ui.calc);
-      if (!r.ok) { ui.err = r.error; renderAll(); }
+      net.submit(ui.calc, function (r) {
+        if (!r.ok) { ui.err = r.error; renderAll(); }
+      });
     }
   });
 
@@ -428,16 +517,15 @@
 
   // ---------- mulai ----------
   document.querySelectorAll('.logo').forEach(function (el) { el.innerHTML = LOGO; });
+  if (store && store.getItem('g24_nick')) $('nick').value = store.getItem('g24_nick');
   applyStatic();
-  game.players = [{ name: 'Bot A' }, { name: 'Bot B' }, { name: 'Bot C' }, { human: true }];
-  buildSeats();
-  showMenu(true);
+  renderAll();
   setInterval(function () {
-    if (game.phase === 'idle') return;
-    game.tick();
-    if (game.phase !== 'end' && game.phase !== 'idle') renderTimer();
+    net.tick();
+    var ph = game.phase;
+    if (ph !== 'idle' && ph !== 'lobby' && ph !== 'end') renderTimer();
   }, 100);
 
-  // untuk uji di konsol
-  window.__g24 = game;
+  // untuk uji di konsol (mesin solo saja)
+  window.__g24 = soloNet.game;
 })(globalThis.G24 = globalThis.G24 || {});

@@ -80,7 +80,8 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--lamp); ou
 @keyframes slideIn { from { transform: translateY(-8px); opacity: 0; } }
 
 /* ---------- kursi bot ---------- */
-.bots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.bots.n1 { grid-template-columns: minmax(0, 420px); justify-content: center; }
+.bots { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
 .seat { position: relative; display: grid; grid-template-columns: 58px 1fr; grid-template-rows: auto auto; gap: 6px 12px; align-items: center;
   padding: 14px; border-radius: 16px; background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line);
   transition: opacity .3s, border-color .25s, box-shadow .25s; }
@@ -232,6 +233,17 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--lamp); ou
 .facts span { font: .75rem var(--fT); color: var(--mute); text-transform: uppercase; letter-spacing: .08em; }
 .btn.start { margin-top: 26px; font: 1.6rem/1 var(--fD); letter-spacing: .08em; padding: 16px 44px; border-radius: 14px; box-shadow: 0 10px 34px -10px var(--lampGlow); }
 .menu .howto { text-align: left; max-width: 560px; margin: 24px auto 0; }
+.online-box { max-width: 420px; margin: 26px auto 0; }
+.online-box .or { font: .75rem var(--fT); color: var(--mute); text-transform: uppercase; letter-spacing: .2em; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+.online-box .or::before, .online-box .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.online-row { display: flex; gap: 8px; }
+.online-row input { flex: 1; min-width: 0; background: #0b0b0e; color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; font: 1rem var(--fB); }
+.online-row input:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+.online-msg { min-height: 1.4em; margin-top: 8px; font: .85rem var(--fT); color: var(--red); }
+.lobby { margin-top: 26px; text-align: center; padding: 30px 20px; }
+.lobby-names { margin-top: 18px; grid-template-columns: repeat(2, minmax(0, 140px)); justify-content: center; }
+.lobby .btn { margin-top: 20px; }
+.lobby .stamp { margin: 22px 0 34px; }
 .final-act { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
 
 /* ---------- akhir ---------- */

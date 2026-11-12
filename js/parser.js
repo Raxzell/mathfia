@@ -94,7 +94,7 @@
       var c = tok.card;
       if (typeof c !== 'number' || c < 0 || c >= cards.length || used[c]) return { ok: false, error: 'cards' };
       used[c] = true;
-      if (G.Deck.values(cards[c]).indexOf(tok.v) < 0) return { ok: false, error: 'value' };
+      if (G.Cards.values(cards[c]).indexOf(tok.v) < 0) return { ok: false, error: 'value' };
     }
     if (Object.keys(used).length !== cards.length) return { ok: false, error: 'cards' };
     var r = evaluate(tokens);

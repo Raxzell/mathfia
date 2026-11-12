@@ -409,6 +409,8 @@
       phaseTotal: this.phaseTotal || 0,
       serverNow: this.clock(),
       result: showResult ? copyResult(this.result) : null,
+      // Skor akhir hanya muncul di fase end.
+      standings: end ? this.standings() : [],
       players: (this.players || []).map(function (p) {
         var o = { id: p.id, name: p.name, human: p.human, on: p.on, penalty: p.penalty, out: p.out };
         if (end) o.persona = p.persona;
