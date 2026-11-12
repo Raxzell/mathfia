@@ -8,9 +8,34 @@
 
   function fail(code) { var e = new Error(code); e.code = code; return e; }
 
+  // Batas untuk input dari jaringan. Rumus sah 4 kartu jauh di bawah batas ini.
+  var MAX_TOKENS = 24, MAX_DEPTH = 8;
+  var OPS = { '+': 1, '-': 1, '*': 1, '/': 1 };
+
+  /** Cek bentuk token tanpa melempar error. Mengembalikan kode error atau null. */
+  function shapeError(tokens) {
+    if (tokens === null || tokens === undefined) return 'empty';
+    if (!Array.isArray(tokens)) return 'syntax';
+    if (!tokens.length) return 'empty';
+    if (tokens.length > MAX_TOKENS) return 'syntax';
+    for (var k = 0; k < tokens.length; k++) {
+      var tok = tokens[k];
+      if (!tok || typeof tok !== 'object') return 'syntax';
+      if (tok.t === 'num') {
+        if (typeof tok.v !== 'number' || !isFinite(tok.v) || Math.floor(tok.v) !== tok.v) return 'syntax';
+      } else if (tok.t === 'op') {
+        if (typeof tok.v !== 'string' || !OPS.hasOwnProperty(tok.v)) return 'syntax';
+      } else if (tok.t !== '(' && tok.t !== ')') {
+        return 'syntax';
+      }
+    }
+    return null;
+  }
+
   function evaluate(tokens) {
-    if (!tokens || !tokens.length) return { ok: false, error: 'empty' };
-    var i = 0;
+    var bad = shapeError(tokens);
+    if (bad) return { ok: false, error: bad };
+    var i = 0, depth = 0;
     function peek() { return tokens[i]; }
     function isOp(tok, a, b) { return tok && tok.t === 'op' && (tok.v === a || tok.v === b); }
 
@@ -39,10 +64,11 @@
         i++; return Fr.F(k.v);
       }
       if (k.t === '(') {
+        if (++depth > MAX_DEPTH) throw fail('syntax');
         i++;
         var v = expr();
         if (!peek() || peek().t !== ')') throw fail('syntax');
-        i++; return v;
+        i++; depth--; return v;
       }
       throw fail('syntax'); // termasuk minus di depan: tidak diizinkan
     }
@@ -59,6 +85,8 @@
 
   /** Cek rumus pemain: 4 kartu dipakai tepat sekali, nilai sah, lalu hitung. */
   function check(tokens, cards) {
+    var bad = shapeError(tokens);
+    if (bad) return { ok: false, error: bad };
     var used = {};
     for (var k = 0; k < tokens.length; k++) {
       var tok = tokens[k];

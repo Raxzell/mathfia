@@ -48,6 +48,23 @@ ok(r2.ok && G.Frac.toString(r2.value) === '-30', '(1-10+4)*6 = -30');
 var dup = tk([{ t: 'num', v: 10, card: 1 }, '+', { t: 'num', v: 10, card: 1 }, '+', { t: 'num', v: 4, card: 2 }]);
 ok(G.Parser.check(dup, cards).error === 'cards', 'kartu dipakai dua kali ditolak');
 
+// --- Parser tahan input sembarangan (dari jaringan)
+function noThrow(fn) { try { return fn(); } catch (e) { return 'THROW:' + e.message; } }
+[null, undefined, 5, 'abc', {}, [null], [undefined], [5], ['+'], [{}], [{ t: 'num', v: '7' }], [{ t: 'num', v: 1.5 }],
+  [{ t: 'op', v: '%' }], [{ t: 'op', v: 'constructor' }], [{ t: 'x' }], [{ t: 'num', v: Infinity }]
+].forEach(function (bad, i) {
+  var e = noThrow(function () { return G.Parser.evaluate(bad); });
+  var c = noThrow(function () { return G.Parser.check(bad, cards); });
+  ok(e && e.ok === false && c && c.ok === false, 'token rusak ditolak tanpa crash #' + i);
+});
+ok(G.Parser.evaluate([]).error === 'empty' && G.Parser.check([], cards).error === 'empty', 'array kosong = empty');
+var deep = [];
+for (var d = 0; d < 5000; d++) deep.push({ t: '(' });
+ok(noThrow(function () { return G.Parser.evaluate(deep).error; }) === 'syntax', 'array sangat panjang ditolak');
+var deep9 = G.Parser.tokenize('(((((((((1)))))))))');
+ok(deep9.length <= 24 && G.Parser.evaluate(deep9).error === 'syntax', 'kurung lebih dari 8 lapis ditolak');
+ok(evalStr('((((((((24))))))))') === '24', 'kurung 8 lapis masih boleh');
+
 // --- Solver
 function verify(vals) {
   var s = G.Solver.solve(vals);
