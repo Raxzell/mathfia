@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Game 24 – Bluffing Edition</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap">
+<style>
+:root{--bg:#FAFAF7;--panel:#fff;--ink:#111;--mute:#6b6b66;--line:#e2e1da;--on:#2D5BFF;--bad:#FF4D2E;--onink:#fff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121214;--panel:#1b1b1f;--ink:#f3f3ee;--mute:#9a9a94;--line:#2c2c32;--on:#6f8dff;--bad:#ff6a4f;--onink:#111}}
+:root[data-theme="dark"]{--bg:#121214;--panel:#1b1b1f;--ink:#f3f3ee;--mute:#9a9a94;--line:#2c2c32;--on:#6f8dff;--bad:#ff6a4f;--onink:#111}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.45 "Space Grotesk",system-ui,sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:16px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--on);outline-offset:2px}
+.top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.top h1{font-size:1.15rem;margin:0;font-weight:700;letter-spacing:-.01em}
+.round{font-size:2.4rem;font-weight:700;letter-spacing:-.04em;line-height:1}
+.round small{font-size:1rem;color:var(--mute);font-weight:500;letter-spacing:0}
+.bar{height:6px;background:var(--line);margin:12px 0 4px;border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;width:62%;background:var(--ink);transition:width .4s}
+.bar.warn i{background:var(--bad)}
+.time{display:flex;justify-content:space-between;color:var(--mute);font-size:.9rem}
+.demo{display:flex;gap:6px;align-items:center;margin:14px 0;color:var(--mute);font-size:.85rem;flex-wrap:wrap}
+.demo button{border:1px solid var(--line);background:var(--panel);padding:6px 12px;border-radius:999px;font-size:.85rem}
+.demo button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.bots{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.seat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;transition:opacity .3s,border-color .2s}
+.seat.dim{opacity:.35}
+.seat.target{border:2px solid var(--bad)}
+.seat.you{border-color:var(--ink)}
+.name{font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.pill{align-self:flex-start;padding:4px 12px;border-radius:999px;font-size:.85rem;font-weight:500;border:1.5px solid var(--line);color:var(--mute);display:inline-flex;gap:6px;align-items:center}
+.pill::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--line)}
+.pill.on{border-color:var(--on);color:var(--on)}
+.pill.on::before{background:var(--on)}
+.pen{display:flex;align-items:flex-end;gap:10px;min-height:44px}
+.stack{position:relative;width:30px;height:42px}
+.stack b{position:absolute;left:0;width:30px;height:42px;border:1.5px solid var(--ink);border-radius:4px;background:var(--panel)}
+.stack b:first-child{background:var(--bad);border-color:var(--bad)}
+.pen span{font-size:1.6rem;font-weight:700;line-height:1;letter-spacing:-.03em}
+.pen em{font-style:normal;color:var(--mute);font-size:.85rem}
+.table{margin:18px 0;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.card{aspect-ratio:5/7;background:var(--panel);border:1.5px solid var(--ink);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;justify-content:space-between;position:relative;max-height:260px}
+.card .r{font-size:clamp(1.4rem,5vw,2.2rem);font-weight:700;letter-spacing:-.04em;line-height:1}
+.card .s{font-size:clamp(2rem,9vw,4rem);text-align:center;line-height:1}
+.card .v{font-size:.8rem;color:var(--mute);align-self:flex-end}
+.card.red{color:var(--bad)}
+.card.used{opacity:.3}
+.card button.ace{position:absolute;bottom:8px;left:8px;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:2px 8px;font-size:.8rem}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.you-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sw{display:flex;align-items:center;gap:12px;border:0;background:none;padding:0;text-align:left}
+.track{width:64px;height:36px;border-radius:999px;background:var(--line);position:relative;transition:background .2s;flex:none}
+.track::after{content:"";position:absolute;top:4px;left:4px;width:28px;height:28px;border-radius:50%;background:var(--panel);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.sw[aria-checked=true] .track{background:var(--on)}
+.sw[aria-checked=true] .track::after{transform:translateX(28px)}
+.sw b{display:block;font-size:1.05rem}
+.sw span{font-size:.85rem;color:var(--mute)}
+.calc{margin-top:14px;border-top:1px solid var(--line);padding-top:14px}
+.expr{min-height:52px;border:1.5px solid var(--ink);border-radius:10px;padding:10px 14px;font-size:1.5rem;font-weight:500;display:flex;align-items:center;justify-content:space-between;gap:8px;overflow-x:auto;white-space:nowrap}
+.expr .ph{color:var(--mute);font-size:1rem}
+.expr .res{font-weight:700}
+.expr .res.ok{color:var(--on)} .expr .res.no{color:var(--bad)}
+.keys{display:grid;grid-template-columns:repeat(4,1fr) repeat(6,1fr);gap:6px;margin-top:10px}
+.keys button{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:12px 0;font-size:1.1rem;font-weight:500;min-height:46px}
+.keys button.op{font-weight:700}
+.keys button:disabled{opacity:.3;cursor:default}
+.act{display:flex;gap:8px;margin-top:10px}
+.btn{border:1.5px solid var(--ink);background:var(--panel);border-radius:10px;padding:12px 18px;font-weight:700}
+.btn.pri{background:var(--ink);color:var(--bg)}
+.banner{background:var(--bad);color:#fff;border-radius:12px;padding:14px 16px;margin-bottom:12px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
+.banner b{font-size:1.1rem}
+.pick{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.board{width:100%;border-collapse:collapse;margin:12px 0}
+.board td,.board th{padding:14px 10px;border-bottom:1px solid var(--line);text-align:left}
+.board th{font-weight:500;color:var(--mute);font-size:.9rem}
+.board .n{font-size:1.8rem;font-weight:700;letter-spacing:-.03em;text-align:right}
+.board tr.win td{color:var(--on)} .board tr.lose td{color:var(--bad)}
+.hidden{display:none}
+@media (max-width:640px){
+ .bots{gap:6px}.seat{padding:10px}.pen span{font-size:1.3rem}
+ .keys{grid-template-columns:repeat(5,1fr)}
+ .table{gap:8px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <div class="top">
+  <h1>Game 24 – Bluffing Edition</h1>
+  <button class="btn" id="restart" style="padding:8px 14px">Mulai ulang</button>
+ </div>
+ <div class="top" style="margin-top:14px">
+  <div class="round"><span id="rn">4</span> <small>dari 13 ronde</small></div>
+  <div id="phaseLabel" style="font-weight:500"></div>
+ </div>
+ <div class="bar" id="bar"><i></i></div>
+ <div class="time"><span id="timeText">Sisa 28 detik</span><span id="hint"></span></div>
+
+ <div class="demo" role="group" aria-label="Pratinjau state">
+  Pratinjau state:
+  <button data-s="observe" aria-pressed="true">Pengamatan</button>
+  <button data-s="pick" aria-pressed="false">Pilih yang dituding</button>
+  <button data-s="prove" aria-pressed="false">Pembuktian</button>
+  <button data-s="end" aria-pressed="false">Skor akhir</button>
+ </div>
+
+ <div id="game">
+  <div id="banner" class="banner hidden"></div>
+  <div class="bots" id="bots"></div>
+  <div class="table" id="cards" aria-label="Empat kartu ronde ini"></div>
+  <div class="panel" id="me"></div>
+ </div>
+
+ <div id="final" class="panel hidden">
+  <h2 style="margin:0 0 4px;font-size:1.4rem">Permainan selesai</h2>
+  <div style="color:var(--mute)">Kartu penalti paling sedikit menang.</div>
+  <table class="board" id="board"></table>
+  <button class="btn pri" id="again">Main lagi</button>
+ </div>
+</div>
+
+<script>
+var CARDS=[{r:"A",s:"♠",v:[1,11]},{r:"Q",s:"♥",v:[10]},{r:"4",s:"♣",v:[4]},{r:"6",s:"♦",v:[6]}];
+var PLAYERS=[{n:"Bot Raka",on:true,pen:8},{n:"Bot Sari",on:true,pen:4},{n:"Bot Dika",on:false,pen:12},{n:"Kamu",on:false,pen:4,me:true}];
+var st={phase:"observe",aceVal:11,used:[],tokens:[],result:null,target:null};
+var $=function(i){return document.getElementById(i)};
+
+function stack(n){var c=Math.min(Math.ceil(n/4),5),h="";for(var i=0;i<c;i++)h+='<b style="bottom:'+(i*4)+'px;left:'+(i*3)+'px"></b>';return '<div class="stack" style="width:'+(30+c*3)+'px">'+h+'</div>'}
+
+function renderBots(){
+ var h="";
+ PLAYERS.slice(0,3).forEach(function(p,i){
+  var cls="seat";
+  if(st.phase==="pick"&&!p.on)cls+=" dim";
+  if(st.phase==="prove"&&st.target===i)cls+=" target";
+  var pickBtn=(st.phase==="pick"&&p.on)?'<button class="btn" data-pick="'+i+'" style="padding:8px">Tuding '+p.n.replace("Bot ","")+'</button>':"";
+  h+='<div class="'+cls+'"><div class="name">'+p.n+'</div>'+
+   '<span class="pill'+(p.on?" on":"")+'">'+(p.on?"Bisa jawab":"Belum")+'</span>'+
+   '<div class="pen">'+stack(p.pen)+'<div><span>'+p.pen+'</span><br><em>kartu penalti</em></div></div>'+pickBtn+'</div>';
+ });
+ $("bots").innerHTML=h;
+}
+
+function renderCards(){
+ var h="";
+ CARDS.forEach(function(c,i){
+  var red=(c.s==="♥"||c.s==="♦")?" red":"";
+  var used=st.used.indexOf(i)>-1?" used":"";
+  var ace=(c.v.length>1&&st.phase==="prove")?'<button class="ace" data-ace="1" aria-label="Ganti nilai As">As = '+st.aceVal+'</button>':"";
+  var val=c.v.length>1?(st.phase==="prove"?"":"1 atau 11"):c.v[0];
+  h+='<div class="card'+red+used+'"><div class="r">'+c.r+'</div><div class="s">'+c.s+'</div><div class="v">'+val+'</div>'+ace+'</div>';
+ });
+ $("cards").innerHTML=h;
+}
+
+function exprText(){return st.tokens.map(function(t){return t.t}).join(" ")}
+function evalExpr(){
+ var s=st.tokens.map(function(t){return t.t}).join("");
+ if(!/^[\d+\-*\/()]+$/.test(s))return null;
+ try{var v=Function('"use strict";return ('+s+')')();return isFinite(v)?v:null}catch(e){return null}
+}
+
+function renderMe(){
+ var me=PLAYERS[3],h="";
+ var meCls=me.on?"true":"false";
+ h+='<div class="you-row"><button class="sw" role="switch" aria-checked="'+meCls+'" id="sw"><span class="track"></span><span><b>'+(me.on?"Saya bisa jawab":"Saya belum nemu")+'</b><span>Bisa diubah kapan saja. Lawan bisa membaca ini.</span></span></button>'+
+  '<div class="pen">'+stack(me.pen)+'<div><span>'+me.pen+'</span><br><em>kartu penalti</em></div></div></div>';
+ if(st.phase==="pick"){
+  h+='<div class="calc"><b>Giliran kamu menuding.</b><div style="color:var(--mute);font-size:.9rem">Hanya kamu yang belum menyalakan saklar. Pilih satu pemain yang saklarnya menyala.</div></div>';
+ }
+ if(st.phase==="prove"){
+  var v=evalExpr(),full=st.used.length===4;
+  var res="";
+  if(v!==null&&full)res='<span class="res '+(v===24?"ok":"no")+'">= '+(Math.round(v*100)/100)+'</span>';
+  h+='<div class="calc"><div class="expr" aria-live="polite">'+(st.tokens.length?'<span>'+exprText()+'</span>':'<span class="ph">Ketuk kartu dan operator untuk menyusun rumus</span>')+res+'</div>'+
+   '<div class="keys">';
+  CARDS.forEach(function(c,i){
+   var val=c.v.length>1?st.aceVal:c.v[0];
+   h+='<button data-card="'+i+'"'+(st.used.indexOf(i)>-1?" disabled":"")+'>'+c.r+'</button>';
+  });
+  ["+","−","×","÷","(",")"].forEach(function(o){h+='<button class="op" data-op="'+o+'">'+o+'</button>'});
+  h+='</div><div class="act"><button class="btn" id="undo">Hapus terakhir</button><button class="btn" id="clr">Kosongkan</button><button class="btn pri" id="sub"'+(full?"":" disabled")+' style="margin-left:auto">Kirim rumus</button></div>'+
+   (st.result?'<div style="margin-top:10px;font-weight:700;color:var(--'+(st.result==="ok"?"on":"bad")+')">'+(st.result==="ok"?"Rumus benar. Penuding mengambil 4 kartu.":"Rumus salah. Kamu mengambil 4 kartu.")+'</div>':"")+'</div>';
+ }
+ $("me").innerHTML=h;
+}
+
+function renderMeta(){
+ var map={observe:"Fase pengamatan",pick:"Menunggu tudingan",prove:"Fase pembuktian",end:"Selesai"};
+ $("phaseLabel").textContent=map[st.phase];
+ var b=$("bar"),t=$("timeText"),hn=$("hint");
+ var pct={observe:62,pick:62,prove:40,end:0}[st.phase];
+ b.firstElementChild.style.width=pct+"%";
+ b.className="bar"+(st.phase==="prove"?" warn":"");
+ t.textContent=st.phase==="prove"?"Sisa 12 detik untuk membuktikan":"Sisa 28 detik";
+ hn.textContent=st.phase==="observe"?"Dua pemain sudah siap":"";
+ var bn=$("banner");
+ if(st.phase==="prove"){
+  bn.classList.remove("hidden");
+  bn.innerHTML='<b>Kamu dituding oleh Bot Dika</b><span>Susun rumus yang hasilnya 24 sebelum waktu habis.</span>';
+ }else bn.classList.add("hidden");
+}
+
+function renderFinal(){
+ var rows=[["Bot Sari",4],["Kamu",4],["Bot Raka",8],["Bot Dika",12]];
+ var h='<tr><th>Pemain</th><th>Status</th><th style="text-align:right">Penalti</th></tr>';
+ rows.forEach(function(r,i){
+  var cls=i===0?"win":(i===rows.length-1?"lose":"");
+  var tag=i===0?"Pemenang":(i===rows.length-1?"Kalah":"");
+  h+='<tr class="'+cls+'"><td><b>'+r[0]+'</b></td><td>'+tag+'</td><td class="n">'+r[1]+'</td></tr>';
+ });
+ $("board").innerHTML=h;
+}
+
+function render(){
+ var end=st.phase==="end";
+ $("game").classList.toggle("hidden",end);
+ $("final").classList.toggle("hidden",!end);
+ if(end){renderFinal();$("phaseLabel").textContent="Selesai";$("bar").firstElementChild.style.width="100%";$("timeText").textContent="13 dari 13 ronde selesai";$("hint").textContent="";$("rn").textContent="13";return}
+ $("rn").textContent="4";
+ renderMeta();renderBots();renderCards();renderMe();
+}
+
+function setPhase(p){
+ st.phase=p;st.tokens=[];st.used=[];st.result=null;
+ if(p==="pick"){PLAYERS[2].on=false;PLAYERS[3].on=false;PLAYERS[0].on=true;PLAYERS[1].on=true;PLAYERS[2].on=false}
+ if(p==="prove"){st.target=3;PLAYERS[3].on=true}
+ document.querySelectorAll(".demo button").forEach(function(b){b.setAttribute("aria-pressed",b.dataset.s===p)});
+ render();
+}
+
+document.addEventListener("click",function(e){
+ var t=e.target.closest("button");if(!t)return;
+ if(t.dataset.s)return setPhase(t.dataset.s);
+ if(t.id==="sw"){PLAYERS[3].on=!PLAYERS[3].on;return render()}
+ if(t.dataset.pick){st.target=+t.dataset.pick;return render()}
+ if(t.dataset.ace){st.aceVal=st.aceVal===11?1:11;st.tokens.forEach(function(k){if(k.ace)k.t=String(st.aceVal)});return render()}
+ if(t.dataset.card!==undefined){
+  var i=+t.dataset.card,c=CARDS[i];
+  var val=c.v.length>1?st.aceVal:c.v[0];
+  st.used.push(i);st.tokens.push({t:String(val),card:i,ace:c.v.length>1});st.result=null;return render();
+ }
+ if(t.dataset.op){var m={"−":"-","×":"*","÷":"/"};var o=m[t.dataset.op]||t.dataset.op;st.tokens.push({t:o,show:t.dataset.op});st.result=null;return render()}
+ if(t.id==="undo"){var k=st.tokens.pop();if(k&&k.card!==undefined)st.used=st.used.filter(function(x){return x!==k.card});st.result=null;return render()}
+ if(t.id==="clr"){st.tokens=[];st.used=[];st.result=null;return render()}
+ if(t.id==="sub"){st.result=(evalExpr()===24)?"ok":"no";return render()}
+ if(t.id==="restart"||t.id==="again"){PLAYERS.forEach(function(p){p.on=false});setPhase("observe")}
+});
+setPhase("observe");
+</script>
+</body>
+</html>

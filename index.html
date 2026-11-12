@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mathfia – Make 24. Trust no one.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Special+Elite&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="logo"></span>
+      <div><h1>Mathfia</h1><small data-i18n="subtitle"></small></div>
+    </div>
+    <div class="controls">
+      <div class="lang" role="group" aria-label="Language">
+        <button data-lang="id">ID</button><button data-lang="en">EN</button>
+      </div>
+      <button class="btn ghost" id="sound"></button>
+      <button class="btn ghost hidden" id="toMenu" data-i18n="menu"></button>
+      <button class="btn ghost hidden" id="restart" data-i18n="restart"></button>
+    </div>
+  </header>
+
+  <section id="menu" class="menu">
+    <div class="hero">
+      <div class="logo huge"></div>
+      <div class="wordmark">Mathfia</div>
+      <h2 data-i18n="menuTitle"></h2>
+      <p data-i18n="menuTag"></p>
+    </div>
+    <div class="lineup" id="lineup"></div>
+    <div class="facts">
+      <div><b>13</b><span data-i18n="factRounds"></span></div>
+      <div><b id="factObs">90</b><span data-i18n="factObserve"></span></div>
+      <div><b>30</b><span data-i18n="factProve"></span></div>
+    </div>
+    <div class="speed" id="speed" role="group"></div>
+    <button class="btn pri start" id="start" data-i18n="start"></button>
+    <details class="howto">
+      <summary data-i18n="howto"></summary>
+      <div class="howtoHtml"></div>
+    </details>
+  </section>
+
+  <section id="game" class="hidden">
+    <div class="meta">
+      <div class="round"><span data-i18n="round"></span> <b id="rn">1</b><small>/13</small></div>
+      <div class="phase" id="phaseLabel"></div>
+      <div class="clock" id="clock"><b id="sec">45</b></div>
+    </div>
+    <div class="bar" id="bar"><i></i></div>
+    <div class="log" id="log" aria-live="polite"></div>
+
+    <div id="banner" class="banner hidden" aria-live="assertive"></div>
+    <div class="bots" id="bots"></div>
+
+    <div class="table-wrap">
+      <div class="table" id="cards"></div>
+      <div class="deck-info" id="deckInfo"></div>
+      <div id="result" class="result hidden"></div>
+    </div>
+
+    <div class="panel" id="me"></div>
+
+    <details class="howto">
+      <summary data-i18n="howto"></summary>
+      <div class="howtoHtml"></div>
+    </details>
+  </section>
+
+  <section id="final" class="panel final hidden">
+    <div class="stamp big" data-i18n="endTitle"></div>
+    <p class="muted" data-i18n="endSub"></p>
+    <table class="board" id="board"></table>
+    <div class="final-act">
+      <button class="btn pri" id="again" data-i18n="playAgain"></button>
+      <button class="btn" id="backMenu" data-i18n="menu"></button>
+    </div>
+  </section>
+</div>
+
+<script src="js/fraction.js"></script>
+<script src="js/deck.js"></script>
+<script src="js/solver.js"></script>
+<script src="js/parser.js"></script>
+<script src="js/bot.js"></script>
+<script src="js/game.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/sound.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
